@@ -1,4 +1,4 @@
-// MQTT Switch Accessory plugin for HomeBridge
+// MQTT Light Bulb Accessory plugin for Homebridge (based on MQTT Switch Accessory plugin for HomeBridge)
 //
 // Remember to add accessory to config.json. Example:
 // "accessories": [
@@ -10,9 +10,18 @@
 //         "password": "PUT PASSWORD OF THE BROKER HERE"
 //         "caption": "PUT THE LABEL OF YOUR SWITCH HERE",
 //         "topics": {
-//             "statusGet":  "PUT THE MQTT TOPIC FOR THE GETTING THE STATUS OF YOUR SWITCH HERE",
-//             "statusSet":  "PUT THE MQTT TOPIC FOR THE SETTING THE STATUS OF YOUR SWITCH HERE"
-//         }
+//             "getOn":  "MQTT TOPIC FOR THE GETTING THE STATUS OF YOUR SWITCH HERE (may be published to homebridge to notify of state)",
+//             "setOn":  "MQTT TOPIC FOR THE SETTING THE STATUS OF YOUR SWITCH HERE (published by homebridge)",
+//             "getBrightness": "MQTT GET BRIGHTNESS TOPIC (optional)",
+//             "setBrightness": "MQTT SET BRIGHTNESS TOPIC (optional)",
+//             "getHue": "MQTT GET HUE TOPIC (optional)",
+//             "setHue": "MQTT SET HUE TOPIC (optional)",
+//             "getSaturation": "MQTT GET SATURATION TOPIC (optional)",
+//             "setSaturation": "MQTT SET SATURATION TOPIC (optional)",
+//         },
+//         "onValue": "OPTIONALLY PUT THE VALUE THAT MEANS ON HERE (DEFAULT true)",
+//         "offValue": "OPTIONALLY PUT THE VALUE THAT MEANS OFF HERE (DEFAULT false)",
+//         "integerValue": "OPTIONALLY SET THIS TRUE TO USE 1/0 AS VALUES"
 //     }
 // ],
 //
@@ -50,6 +59,12 @@ function mqttlightbulbAccessory(log, config) {
   };
   this.caption = config["caption"];
   this.topics = config["topics"];
+  this.onValue = (config["onValue"] !== undefined) ? config["onValue"]: "true";
+  this.offValue = (config["offValue"] !== undefined) ? config["offValue"]: "false";
+  if (config["integerValue"]) {
+    this.onValue = "1";
+    this.offValue = "0";
+  }
   this.on = false;
   this.brightness = 0;
   this.hue = 0;
@@ -93,8 +108,8 @@ function mqttlightbulbAccessory(log, config) {
 
     if (topic == that.topics.getOn) {
       var status = message.toString();
-      that.on = (status == "true" ? true : false);
-        that.service.getCharacteristic(Characteristic.On).setValue(that.on, undefined, 'fromSetValue');
+      that.on = (status == that.onValue ? true : false);
+      that.service.getCharacteristic(Characteristic.On).setValue(that.on, undefined, 'fromSetValue');
     }
 
     if (topic == that.topics.getBrightness) {
@@ -144,7 +159,7 @@ mqttlightbulbAccessory.prototype.getStatus = function(callback) {
 mqttlightbulbAccessory.prototype.setStatus = function(status, callback, context) {
   if(context !== 'fromSetValue') {
     this.on = status;
-    this.client.publish(this.topics.setOn, status ? "true" : "false");
+    this.client.publish(this.topics.setOn, status ? this.onValue : this.offValue);
   }
   callback();
 }
